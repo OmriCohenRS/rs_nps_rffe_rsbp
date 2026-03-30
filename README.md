@@ -2,8 +2,6 @@
 Ramon space RFFE on raspberry pi sw for NPS project
 
 # Repository hierarchy
-## Repository Structure
-
 ```text
 .
 ├── README.md
