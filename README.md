@@ -2,6 +2,10 @@
 Ramon space RFFE on raspberry pi sw for NPS project
 
 # Repository hierarchy
+## Repository Structure
+
+```text
+.
 ├── README.md
 
 ├── docs/
@@ -22,9 +26,9 @@ Ramon space RFFE on raspberry pi sw for NPS project
 │       │   └── README.md
 │       │
 │       └── afe11612/
-│       │   ├── afe11612.c
-│       │   ├── Makefile
-│       │   └── README.md
+│           ├── afe11612.c
+│           ├── Makefile
+│           └── README.md
 
 ├── device_tree/
 │   └── overlays/
@@ -45,9 +49,9 @@ Ramon space RFFE on raspberry pi sw for NPS project
 │   │   │   └── Makefile
 │   │   │
 │   │   └── afe11612/
-│   │   │   ├── include/
-│   │   │   ├── src/
-│   │   │   └── Makefile
+│   │       ├── include/
+│   │       ├── src/
+│   │       └── Makefile
 │   │
 │   ├── cli/
 │   │   ├── apio16/
@@ -55,8 +59,8 @@ Ramon space RFFE on raspberry pi sw for NPS project
 │   │   └── afe11612/
 │   │
 │   └── gui/
-│   │   ├── apio16/
-│   │   ├── lmx2694/
-│   │   └── afe11612/
+│       ├── apio16/
+│       ├── lmx2694/
+│       └── afe11612/
 
 └── scripts/
