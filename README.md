@@ -62,3 +62,12 @@ Ramon space RFFE on raspberry pi sw for NPS project
 │       └── afe11612/
 
 └── scripts/
+```
+
+# Devices and Configuration
+```text
+Drivers for raspberry pi 3
+For apio16 driver must config the following:
+	- Enable spi on rsbp
+	- Add dtoverlay=spi1-1cs and dtoverlay=apio16-spi1 to /boot/firmware/config.txt and reboot
+```
