@@ -75,14 +75,39 @@ class GUI:
                               bg="orange")
         reset_btn.grid(row=17, column=0, columnspan=3, pady=10)
 
-        # start refresh loop
-        self.current_pin = 0
-        self.refresh_loop()
+
+        update_btn = tk.Button(
+            root,
+            text="Update Status",
+            command=self.update_status,
+            bg="lightblue"
+        )
+        update_btn.grid(row=18, column=0, columnspan=3, pady=5)
 
         # handle window close
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     # ================= ROW =================
+
+    def update_status(self):
+        for pin in range(16):
+            dir_var, val_var = self.rows[pin]
+
+            # Read direction
+            d = get_dir(pin)
+            if not d:
+                continue
+
+            dir_var.set(d)
+
+            # Read value if input
+            if d == "input":
+                v = read_pin(pin)
+                if v is not None:
+                    val_var.set(str(v))
+            else:
+                # output → readback optional, but keep UI consistent
+                val_var.set(val_var.get())
 
     def add_pin_row(self, pin):
         row = pin + 1
@@ -152,26 +177,6 @@ class GUI:
                     val_var.set("0")
         else:
             print("Reset FAILED")
-
-    # ================= REFRESH =================
-
-    def refresh_loop(self):
-        pin = self.current_pin
-        dir_var, val_var = self.rows[pin]
-
-        # update direction from HW
-        d = get_dir(pin)
-        if d:
-            dir_var.set(d)
-
-        # update value if input
-        if d == "input":
-            val = read_pin(pin)
-            if val is not None:
-                val_var.set(str(val))
-
-        self.current_pin = (self.current_pin + 1) % 16
-        self.root.after(50, self.refresh_loop)
 
     # ================= CLOSE =================
 
