@@ -9,7 +9,6 @@
         __overlay__ {
             status = "okay";
 
-            // Explicit, required for SPI children
             #address-cells = <1>;
             #size-cells = <0>;
 
