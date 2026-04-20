@@ -158,7 +158,7 @@ int afe11612_read_voltage_raw(afe11612_t *dev, int channel, int *value)
 {
     char path[512];
 
-    if (channel < 0 || channel >= AFE_MAX_VOLTAGES)
+    if (!dev || channel < 0 || channel >= AFE_MAX_VOLTAGES)
         return -EINVAL;
 
     snprintf(path, sizeof(path),
@@ -178,7 +178,7 @@ int afe11612_read_voltage_input(afe11612_t *dev, int channel, double *value)
 {
     char path[512];
 
-    if (channel < 0 || channel >= AFE_MAX_VOLTAGES)
+    if (!dev || channel < 0 || channel >= AFE_MAX_VOLTAGES)
         return -EINVAL;
 
     snprintf(path, sizeof(path),
@@ -198,7 +198,7 @@ int afe11612_read_temp_raw(afe11612_t *dev, int channel, int *value)
 {
     char path[512];
 
-    if (channel < 0 || channel >= AFE_MAX_TEMPS)
+    if (!dev || channel < 0 || channel >= AFE_MAX_TEMPS)
         return -EINVAL;
 
     snprintf(path, sizeof(path),
@@ -218,7 +218,7 @@ int afe11612_read_temp_input(afe11612_t *dev, int channel, double *value)
 {
     char path[512];
 
-    if (channel < 0 || channel >= AFE_MAX_TEMPS)
+    if (!dev || channel < 0 || channel >= AFE_MAX_TEMPS)
         return -EINVAL;
 
     snprintf(path, sizeof(path),

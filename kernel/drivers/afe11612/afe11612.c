@@ -47,9 +47,9 @@
 /* Additional afe11612 definitions*/
 #define AFE_TEMP_FIELD        GENMASK(15, 4)
 
-#define AFE_VREF     2.5     /* ADC reference voltage (V) */
-#define AFE_EXT_DIV  2.0     /* External divider ratio */
-#define AFE_ADC_MAX  4095.0  /* 12-bit ADC max value */
+#define AFE_VREF     2500000LL     	/* ADC reference voltage (V) in uV */
+#define AFE_EXT_DIV  2     			/* External divider ratio */
+#define AFE_ADC_MAX  4095.0  		/* 12-bit ADC max value */
 
 #define AFE_CMD_WRITE          0x00
 #define AFE_CMD_READ           0x80
@@ -228,18 +228,16 @@ static int afe11612_read_raw(struct iio_dev *indio_dev,
 
 			t = FIELD_GET(AFE_TEMP_FIELD, raw) * 125;
 			*val = t / 1000;
-			*val2 = t % 1000;
+			*val2 = (t % 1000) * 1000;
 			ret = IIO_VAL_INT_PLUS_MICRO;
 
 		} else {
-			s64 mv;
+			s64 uv;
 
-			mv = raw;
-			mv *= (s64)(AFE_VREF * AFE_EXT_DIV);
-			mv = div64_s64(mv, AFE_ADC_MAX);
-
-			*val  = mv / 1000;
-			*val2 = mv % 1000;
+			uv = (s64)raw * AFE_VREF * AFE_EXT_DIV;
+			uv = div64_s64(uv, AFE_ADC_MAX);
+			*val  = uv / 1000000;
+			*val2 = uv % 1000000;
 			ret = IIO_VAL_INT_PLUS_MICRO;
 		}
 		break;

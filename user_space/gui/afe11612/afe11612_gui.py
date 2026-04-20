@@ -8,7 +8,10 @@ import time
 afe = ctypes.CDLL("../../../build/user_space/lib/afe11612/libafe11612.so")
 
 class AFE11612(ctypes.Structure):
-    _fields_ = [("device_path", ctypes.c_char * 256)]
+    _fields_ = [
+        ("device_path", ctypes.c_char * 256),
+        ("spi_path", ctypes.c_char * 256),
+    ]
 
 afe.afe11612_init.argtypes = [
     ctypes.POINTER(AFE11612), ctypes.c_char_p
@@ -107,29 +110,42 @@ class AFEGUI(tk.Tk):
         else:
             self.device_var.set("Device ID: ERROR")
 
+    def _apply_update(self, live_text, voltages, temperatures, status_text):
+        self.live_var.set(live_text)
+        for i, text in enumerate(voltages):
+            if text is not None:
+                self.volt_vars[i].set(text)
+        for i, text in enumerate(temperatures):
+            if text is not None:
+                self.temp_vars[i].set(text)
+        self.status.set(status_text)
+
     def start_worker(self):
         threading.Thread(target=self.update_loop, daemon=True).start()
-
+        
     def update_loop(self):
         while self.running:
             heartbeat = int(time.time()) % 2
-            self.live_var.set("● LIVE" if heartbeat else "○ LIVE")
-
+            live_text = "● LIVE" if heartbeat else "○ LIVE"
+            voltages = [None] * 16
             for i in range(16):
                 val = ctypes.c_double()
                 if afe.afe11612_read_voltage_input(
                     ctypes.byref(self.dev), i, ctypes.byref(val)
                 ) == 0:
-                    self.volt_vars[i].set(f"{val.value:.6f} V")
-
+                    voltages[i] = f"{val.value:.6f} V"
+            temperatures = [None] * 3
             for i in range(3):
                 val = ctypes.c_double()
                 if afe.afe11612_read_temp_input(
                     ctypes.byref(self.dev), i, ctypes.byref(val)
                 ) == 0:
-                    self.temp_vars[i].set(f"{val.value:.2f} °C")
-
-            self.status.set(f"Last update: {time.strftime('%H:%M:%S')}")
+                    temperatures[i] = f"{val.value:.2f} °C"
+            status_text = f"Last update: {time.strftime('%H:%M:%S')}"
+            try:
+                self.after(0, self._apply_update, live_text, voltages, temperatures, status_text)
+            except tk.TclError:
+                break
             time.sleep(0.5)
 
     def close(self):
