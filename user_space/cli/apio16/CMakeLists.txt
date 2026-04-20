@@ -1,27 +1,23 @@
 project(apio16_cli C)
 
-# Collect all C files in this directory
-file(GLOB CLI_SOURCES "*.c")
+set(APP_NAME apio16_cli)
 
-foreach(SRC ${CLI_SOURCES})
-    get_filename_component(APP_NAME ${SRC} NAME_WE)
+# Create executable
+add_executable(${APP_NAME}
+    apio16_cli.c
+)
 
-    add_executable(${APP_NAME} ${SRC})
+# Link against the user library
+target_link_libraries(${APP_NAME}
+    PRIVATE apio16
+)
 
-    # Link to user-space library
-    target_link_libraries(${APP_NAME} PRIVATE apio16)
+# Compute output path relative to repository root
+get_repo_relative_path(REPO_PATH)
+set(APP_OUT ${CMAKE_BINARY_DIR}/${REPO_PATH})
+file(MAKE_DIRECTORY ${APP_OUT})
 
-    # Include the apio16 user lib headers
-    target_include_directories(${APP_NAME} PRIVATE
-        ${CMAKE_SOURCE_DIR}/user_space/lib/apio16/include
-    )
-
-    get_repo_relative_path(REPO_PATH)
-    set(CLI_OUT ${CMAKE_BINARY_DIR}/${REPO_PATH})
-    file(MAKE_DIRECTORY ${CLI_OUT})
-
-    set_target_properties(${APP_NAME} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CLI_OUT}
-    )
-
-endforeach()
+# Place the executable under the same folder structure in build/
+set_target_properties(${APP_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${APP_OUT}
+)
