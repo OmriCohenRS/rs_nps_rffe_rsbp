@@ -107,9 +107,12 @@ Ramon space RFFE on raspberry pi sw for NPS project
 **Edit /boot/firmware/config.txt**
 ```text
 It will probably contain 'dtparam=spi=on'. It only enable spi0 with cs0 and cs1.
-Remove 'dtparam=spi=on' and Add 'dtoverlay=rffe-overlay'. This will enable and config spi according to
-rffe-overlay.dtbo device tree.
-Or dtoverlay='another_dt.dtbo' to load another device tree nodes.
+Remove 'dtparam=spi=on' and Add the following:
+'dtoverlay=rffe-overlay'. This will bind drivers and config spi according to rffe-overlay.dtbo device tree.
+'dtoverlay=spi0-0cs'. This will disable default linux spi so it will not break costume configuration.
+'dtoverlay=spi1-1cs'. This will enable 1 cs (cs0) for spi1 bus.
+
+For developers: dtoverlay='another_dt.dtbo' to load another device tree nodes.
 ```
 
 **Device tree overlay**
@@ -120,8 +123,8 @@ like: driver, spi bus, cs, freq, mode etc..
 
 **Device tree overlay example**
 ```text
-In this node afe11612 driver bind to spi0 bus, freq is 1MHZ, SPI mode 1, and cs pin is configed to be
-one of the gpios of apio16 (another device connected to rsbp):
+In this node afe11612 driver bind to spi0 bus, freq is 1MHZ, SPI mode 1, cs pin is configed to be
+one of the gpios of apio16 (another device connected to rsbp), cs can be config to one of the built in rsbp gpios (i.e cs-gpios = <&gpio 8 1>):
     fragment@1 {
         target = <&spi0>;
         __overlay__ {
@@ -129,7 +132,7 @@ one of the gpios of apio16 (another device connected to rsbp):
 
             #address-cells = <1>;
             #size-cells = <0>;
-            cs-gpios = <&apio16 8 0>;
+            cs-gpios = <&apio16 8 1>;
 
             afe11612@0 {
                 compatible = "ti,afe11612";
@@ -156,7 +159,7 @@ Script move kernel drivers and devic tree (dt.dtbo and driver.ko) from build fol
 ```bash
 ./scripts/install_drivers.sh
 ```
-After install driver, reboot rasberry pi.
+After install driver, reboot raspberry pi.
 
 ## Run applications
 **cli apps**
