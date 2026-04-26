@@ -1,0 +1,49 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    /*
+     * Fragment 0: SPI1 + APIO16 GPIO expander
+     */
+    fragment@0 {
+        target = <&spi1>;
+        __overlay__ {
+            status = "okay";
+
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            apio16: gpio@0 {
+                compatible = "apogee,apio16";
+                reg = <0>;                  /* spi1 CS0 */
+                spi-max-frequency = <1000000>;
+
+                gpio-controller;
+                #gpio-cells = <2>;
+            };
+        };
+    };
+
+    /*
+     * Fragment 1: SPI0 + AFE11612 ADC
+     */
+    fragment@1 {
+        target = <&spi0>;
+        __overlay__ {
+            status = "okay";
+
+            #address-cells = <1>;
+            #size-cells = <0>;
+            cs-gpios = <&apio16 8 1>;
+
+            afe11612@0 {
+                compatible = "ti,afe11612";
+                reg = <0>;                  /* logical SPI device */
+                spi-max-frequency = <1000000>;
+                spi-cpha;                   /* MODE 1 */
+            };
+        };
+    };
+};
