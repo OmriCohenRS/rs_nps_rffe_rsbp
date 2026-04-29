@@ -11,7 +11,7 @@ set(LIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 # Create shared library (.so)
 add_library(${LIB_NAME} SHARED ${LIB_SOURCES})
 target_include_directories(${LIB_NAME} PUBLIC ${LIB_INCLUDE_DIR})
-target_link_libraries(${LIB_NAME} PUBLIC gpiod)
+target_link_libraries(${LIB_NAME} PUBLIC gpiod cjson)
 
 get_repo_relative_path(REPO_PATH)
 set(LIB_OUT ${CMAKE_BINARY_DIR}/${REPO_PATH})

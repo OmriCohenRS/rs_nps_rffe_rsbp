@@ -1,0 +1,75 @@
+* {
+  box-sizing: border-box;
+  font-family: system-ui, Arial, sans-serif;
+}
+
+body {
+  margin: 8px;
+  background: #f4f6f8;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.top-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 340px 500px 460px; /* larger boxes */
+  gap: 12px;                               /* more breathing room */
+}
+
+section {
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* ---------- Bigger data font ---------- */
+
+tbody td {
+  font-size: 18px;           /* bigger channel numbers & values */
+  font-weight: 500;
+  font-variant-numeric: tabular-nums; /* aligned digits */
+}
+
+
+th {
+  background: #e9edf2;
+  font-weight: 600;
+}
+
+#dac-table input {
+  width: 70px;
+}
+
+button {
+  cursor: pointer;
+}

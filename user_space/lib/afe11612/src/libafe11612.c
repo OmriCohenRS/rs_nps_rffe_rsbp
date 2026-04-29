@@ -18,6 +18,7 @@
 */
 
 #include "libafe11612.h"
+#include "cjson/cJSON.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -29,6 +30,10 @@ typedef enum {
     AFE_VAL_UINT32_HEX,
     AFE_VAL_DOUBLE,
 } afe_val_type_t;
+
+#define AFE_DAC_CONFIG_PATH "/etc/afe11612/afe_dac_config.json"
+
+int afe11612_write_dac_mv(afe11612_t *dev, int channel, int mv);
 
 /*! ****************************************************************************
  * @fn read_file_value
@@ -74,6 +79,100 @@ static int read_file_value(const char *path, afe_val_type_t type, void *out)
 }
 
 /*! ****************************************************************************
+ * @fn write_file_int
+ * @brief Write an integer value to a sysfs file.
+ * @param path   Path to the sysfs file.
+ * @param value  Integer value to write.
+ * @return 0 on success, negative errno value on failure.
+ * @note This helper is intended for sysfs attributes that accept
+ *       single integer values (e.g. DAC voltage in mV).
+ *****************************************************************************/
+static int write_file_int(const char *path, int value)
+{
+    FILE *f;
+
+    f = fopen(path, "w");
+    if (!f)
+        return -errno;
+
+    fprintf(f, "%d", value);
+
+    fclose(f);
+    return 0;
+}
+
+/**
+ * @fn afe11612_load_dac_config
+ * @brief Load DAC configuration from JSON file (array-based format)
+ * Expected format:
+ * {
+ *   "dac0": [500, 1000, 1500, ...]
+ * }
+ * @param dev pointer to device
+ * @param path path to JSON config file
+ * @return 0 on success, negative on error
+ */
+int afe11612_load_dac_config(afe11612_t *dev, const char *path)
+{
+    FILE *fp;
+    long len;
+    char *buf;
+    cJSON *json, *arr;
+
+    if (!dev || !path)
+        return -1;
+
+    fp = fopen(path, "rb");
+    if (!fp)
+        return -2;
+
+    fseek(fp, 0, SEEK_END);
+    len = ftell(fp);
+    rewind(fp);
+
+    if (len <= 0) {
+        fclose(fp);
+        return -3;
+    }
+
+    buf = malloc(len + 1);
+    if (!buf) {
+        fclose(fp);
+        return -4;
+    }
+
+    if (fread(buf, 1, len, fp) != (size_t)len) {
+        fclose(fp);
+        free(buf);
+        return -5;
+    }
+
+    buf[len] = '\0';
+    fclose(fp);
+
+    json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!json)
+        return -6;
+
+    arr = cJSON_GetObjectItem(json, "dac0");
+    if (!cJSON_IsArray(arr)) {
+        cJSON_Delete(json);
+        return -7;
+    }
+
+    for (int i = 0; i < cJSON_GetArraySize(arr); i++) {
+        cJSON *v = cJSON_GetArrayItem(arr, i);
+        if (cJSON_IsNumber(v))
+            afe11612_write_dac_mv(dev, i, v->valueint);
+    }
+
+    cJSON_Delete(json);
+    return 0;
+}
+
+/*! ****************************************************************************
  * @fn afe11612_init
  * @brief Initialize an AFE11612 device instance by locating its IIO device.
  * @param dev Pointer to the AFE11612 device structure.
@@ -84,7 +183,7 @@ int afe11612_init(afe11612_t *dev, const char *spi_dev)
 {
     DIR *dir;
     struct dirent *ent;
-    int found = 0;
+    int found = 0, ret = 0;
 
     if (!dev || !spi_dev)
         return -EINVAL;
@@ -124,8 +223,37 @@ int afe11612_init(afe11612_t *dev, const char *spi_dev)
     if (!found)
         return -ENODEV;
 
+    ret = afe11612_load_dac_config(dev, AFE_DAC_CONFIG_PATH);
+    if (ret != 0)
+        printf("failed to afe11612_load_dac_config");
+
+
     return 0;
 }
+
+/**
+ * @brief Set DAC output voltage (in millivolts)
+ * @param dev     AFE11612 device handle
+ * @param channel DAC channel index (0–11)
+ * @param mv      Output voltage in millivolts
+ * @return 0 on success, negative errno value on failure
+ * @note The driver is responsible for converting mV to raw DAC code.
+ */
+int afe11612_write_dac_mv(afe11612_t *dev, int channel, int mv)
+{
+    char path[512];
+
+    if (!dev || channel < 0 || channel >= AFE_MAX_DACS)
+        return -EINVAL;
+
+    snprintf(path, sizeof(path),
+             "%s/out_voltage%d_raw",
+             dev->device_path, channel);
+
+    /* mv is written directly; driver converts mv → DAC code */
+    return write_file_int(path, mv);
+}
+
 
 /*! ****************************************************************************
  * @fn afe11612_read_device_id

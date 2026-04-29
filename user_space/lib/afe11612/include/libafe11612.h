@@ -26,8 +26,9 @@
 extern "C" {
 #endif
 
-#define AFE_MAX_VOLTAGES 16
-#define AFE_MAX_TEMPS     3
+#define AFE_MAX_VOLTAGES    16
+#define AFE_MAX_TEMPS       3
+#define AFE_MAX_DACS        12
 
 typedef struct {
     char device_path[256];   // /sys/.../spiX.Y/iio:deviceN
@@ -44,6 +45,8 @@ int afe11612_read_voltage_input(afe11612_t *dev, int channel, double *value);
 
 int afe11612_read_temp_raw(afe11612_t *dev, int channel, int *value);
 int afe11612_read_temp_input(afe11612_t *dev, int channel, double *value);
+
+int afe11612_write_dac_mv(afe11612_t *dev, int channel, int mv);
 
 #ifdef __cplusplus
 }
