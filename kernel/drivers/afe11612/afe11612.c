@@ -18,6 +18,7 @@
 #define AFE_REG_TEMP_REMOTE1        0x01    /* Remote temperature sensor 1 */
 #define AFE_REG_TEMP_REMOTE2        0x02    /* Remote temperature sensor 2 */
 #define AFE_REG_ADC_DATA_BASE       0x23    /* Base address for ADC conversion */
+#define AFE_REG_DAC_DATA_BASE       0x33    /* Base address for DAC channels */
 #define AFE_REG_ADC_CH_EN0          0x50    /* ADC Channels 0-12 Enable */
 #define AFE_REG_ADC_CH_EN1          0x51    /* ADC Channels 13-15 Enable */
 #define AFE_REG_CFG                 0x4C    /* Main configuration register */
@@ -36,9 +37,10 @@
 #define AFE_ADC_CTRL_CFG_DEFAULT    (AFE_ADC_REF_INT)
 #define AFE_ADC_MEAS                (AFE_ADC_REF_INT | AFE_ADC_INT_CONV)
 /* reg 0x6B */ 
+#define AFE_PWR_DAC_MASK   			(((1U << 12) - 1U) << 1) /* DAC0-11 power */
 #define AFE_PWR_ADC                 BIT(13) /* Power-down mode control bit */
 #define AFE_PWR_REF                 BIT(14) /* Internal reference in power-down mode control bit */
-#define AFE_PWR_CFG                 (AFE_PWR_ADC | AFE_PWR_REF)  
+#define AFE_PWR_CFG                 (AFE_PWR_ADC | AFE_PWR_REF | AFE_PWR_DAC_MASK)  
 /* reg 0x6C */ 
 #define AFE_DEVICE_ID_EXPECTED      0x1220
 /* reg 0x7C */ 
@@ -47,9 +49,9 @@
 /* Additional afe11612 definitions*/
 #define AFE_TEMP_FIELD        GENMASK(15, 4)
 
-#define AFE_VREF     2500000LL     	/* ADC reference voltage (V) in uV */
-#define AFE_EXT_DIV  2     			/* External divider ratio */
-#define AFE_ADC_MAX  4095.0  		/* 12-bit ADC max value */
+#define AFE_VREF     	2500000LL     	/* ADC reference voltage (V) in uV */
+#define AFE_FULL_SCALE  2     			/* External divider ratio */
+#define AFE_ADC_MAX  	4095  			/* 12-bit ADC max value */
 
 #define AFE_CMD_WRITE          0x00
 #define AFE_CMD_READ           0x80
@@ -171,18 +173,18 @@ out:
 
 static int afe11612_wait_data_ready(struct afe11612_state *st)
 {
-    u16 val;
-    int ret;
+	u16 val;
+	int ret;
 
-    ret = read_poll_timeout(afe11612_spi_read_reg,
-                            ret,
-                            (ret == 0) && (val & AFE_ADC_DATA_READY),
-                            AFE_ADC_POLL_US,
-                            AFE_ADC_TIMEOUT_US,
-                            false,
-                            st, AFE_REG_CFG, &val);
+	ret = read_poll_timeout(afe11612_spi_read_reg,
+							ret,
+							(ret == 0) && (val & AFE_ADC_DATA_READY),
+							AFE_ADC_POLL_US,
+							AFE_ADC_TIMEOUT_US,
+							false,
+							st, AFE_REG_CFG, &val);
 
-    return ret;
+	return ret;
 }
 
 static int afe11612_read_raw(struct iio_dev *indio_dev,
@@ -234,7 +236,7 @@ static int afe11612_read_raw(struct iio_dev *indio_dev,
 		} else {
 			s64 uv;
 
-			uv = (s64)raw * AFE_VREF * AFE_EXT_DIV;
+			uv = (s64)raw * AFE_VREF * AFE_FULL_SCALE;
 			uv = div64_s64(uv, AFE_ADC_MAX);
 			*val  = uv / 1000000;
 			*val2 = uv % 1000000;
@@ -248,6 +250,42 @@ static int afe11612_read_raw(struct iio_dev *indio_dev,
 
 out_unlock:
 	mutex_unlock(&st->lock);
+	return ret;
+}
+
+static int afe11612_write_raw(struct iio_dev *indio_dev,
+				 const struct iio_chan_spec *chan,
+				 int val, int val2, long mask)
+{
+	struct afe11612_state *st = iio_priv(indio_dev);
+	s64 uv, digital, denom;
+	int ret;
+
+	if (mask != IIO_CHAN_INFO_RAW)
+		return -EINVAL;
+
+	if (!chan->output)
+		return -EINVAL;
+	
+	uv = (s64)val * 1000;
+	denom = AFE_VREF * AFE_FULL_SCALE;
+
+	digital = div64_s64(uv * AFE_ADC_MAX + denom / 2,
+						denom);
+
+	if (digital < 0)
+		digital = 0;
+	else if (digital > AFE_ADC_MAX)
+		digital = AFE_ADC_MAX;
+
+	mutex_lock(&st->lock);
+
+	ret = afe11612_spi_write_reg(st,
+					chan->address,
+					(u16)digital);
+
+	mutex_unlock(&st->lock);
+
 	return ret;
 }
 
@@ -270,6 +308,16 @@ out_unlock:
 		BIT(IIO_CHAN_INFO_PROCESSED),   \
 }
 
+#define AFE_DAC_CHAN(_idx) {                  	\
+	.type = IIO_VOLTAGE,                  		\
+	.indexed = 1,                         		\
+	.output = 1,                          		\
+	.channel = (_idx),                    		\
+	.address = AFE_REG_DAC_DATA_BASE + (_idx), 	\
+	.info_mask_separate =                 		\
+		BIT(IIO_CHAN_INFO_RAW),        			\
+}
+
 static const struct iio_chan_spec afe11612_channels[] = {
 	AFE_ADC_CHAN(0),  AFE_ADC_CHAN(1),
 	AFE_ADC_CHAN(2),  AFE_ADC_CHAN(3),
@@ -283,43 +331,57 @@ static const struct iio_chan_spec afe11612_channels[] = {
 	AFE_TEMP_CHAN(0, AFE_REG_TEMP_LOCAL),
 	AFE_TEMP_CHAN(1, AFE_REG_TEMP_REMOTE1),
 	AFE_TEMP_CHAN(2, AFE_REG_TEMP_REMOTE2),
+
+	AFE_DAC_CHAN(0),
+	AFE_DAC_CHAN(1),
+	AFE_DAC_CHAN(2),
+	AFE_DAC_CHAN(3),
+	AFE_DAC_CHAN(4),
+	AFE_DAC_CHAN(5),
+	AFE_DAC_CHAN(6),
+	AFE_DAC_CHAN(7),
+	AFE_DAC_CHAN(8),
+	AFE_DAC_CHAN(9),
+	AFE_DAC_CHAN(10),
+	AFE_DAC_CHAN(11),
 };
 
 static const struct iio_info afe11612_iio_info = {
 	.read_raw = afe11612_read_raw,
+	.write_raw = afe11612_write_raw,
 };
 
 //TODO
 static ssize_t sw_reset_store(struct device *dev,
-                             struct device_attribute *attr,
-                             const char *buf, size_t count)
+							 struct device_attribute *attr,
+							 const char *buf, size_t count)
 {
-    struct spi_device *spi = to_spi_device(dev);
-    struct iio_dev *indio_dev = spi_get_drvdata(spi);
-    struct afe11612_state *st;
-    int ret, val;
+	struct spi_device *spi = to_spi_device(dev);
+	struct iio_dev *indio_dev = spi_get_drvdata(spi);
+	struct afe11612_state *st;
+	int ret, val;
 
-    if (!indio_dev)
-        return -ENODEV;
+	if (!indio_dev)
+		return -ENODEV;
 
-    st = iio_priv(indio_dev);
+	st = iio_priv(indio_dev);
 
-    if (!st)
-        return -ENODEV;
+	if (!st)
+		return -ENODEV;
 
-    if (kstrtoint(buf, 10, &val))
-        return -EINVAL;
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
 
-    if (val != 1)
-        return -EINVAL;
+	if (val != 1)
+		return -EINVAL;
 
-    dev_info(dev, "Software reset triggered\n");
+	dev_info(dev, "Software reset triggered\n");
 
-    ret = afe11612_hw_init(st);
-    if (ret)
-        return ret;
+	ret = afe11612_hw_init(st);
+	if (ret)
+		return ret;
 
-    return count;
+	return count;
 }
 
 static DEVICE_ATTR_WO(sw_reset);
@@ -407,7 +469,7 @@ static int afe11612_probe(struct spi_device *spi)
 }
 
 static const struct of_device_id afe11612_of_match[] = {
-	{ .compatible = "ti,afe11612" },
+	{ .compatible = "ramon-space,afe11612" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, afe11612_of_match);

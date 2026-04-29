@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AFE11612 Control Panel</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<header>
+  <h1>AFE11612 Control Panel</h1>
+
+  <div class="top-buttons">
+    <button onclick="readDeviceID()">Read Device ID</button>
+    <span id="top-status"></span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <section>
+    <h2>ADC Channels</h2>
+    <table id="adc-table"></table>
+  </section>
+
+  <section>
+    <h2>Temperature Sensors</h2>
+    <table id="temp-table"></table>
+  </section>
+
+  <section>
+    <h2>DAC Outputs</h2>
+    <table id="dac-table"></table>
+  </section>
+
+</div>
+
+<!-- Script (MUST be last) -->
+<script src="/static/app.js"></script>
+
+</body>
+</html>

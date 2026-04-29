@@ -240,7 +240,7 @@ static int apio16_probe(struct spi_device *spi)
 }
 
 static const struct of_device_id apio16_of_match[] = {
-	{ .compatible = "apogee,apio16" },
+	{ .compatible = "ramon-space,apio16" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, apio16_of_match);
